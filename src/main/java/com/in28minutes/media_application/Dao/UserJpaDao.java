@@ -1,6 +1,8 @@
 package com.in28minutes.media_application.Dao;
 
+import com.in28minutes.media_application.Entity.Post;
 import com.in28minutes.media_application.Entity.User;
+import com.in28minutes.media_application.Repositories.PostJpaRepository;
 import com.in28minutes.media_application.Repositories.UserJpaRepository;
 import com.in28minutes.media_application.Services.UserNotFoundException;
 import com.in28minutes.media_application.Services.UserService;
@@ -19,8 +21,11 @@ public class UserJpaDao {
 
     private UserJpaRepository userJpaRepository;
 
-    public UserJpaDao(UserJpaRepository userJpaRepository) {
+    private PostJpaRepository postJpaRepository;
+
+    public UserJpaDao(UserJpaRepository userJpaRepository,PostJpaRepository postJpaRepository) {
         this.userJpaRepository = userJpaRepository;
+        this.postJpaRepository = postJpaRepository;
     }
 
     @GetMapping("/jpa/users")
@@ -58,5 +63,34 @@ public class UserJpaDao {
         userJpaRepository.deleteById(id);
     }
 
+    @GetMapping("/jpa/users/{id}/posts")
+    public List<Post> retriveUsersPosts(@PathVariable int id)
+    {
+        Optional<User>  user=userJpaRepository.findById(id);
+        if(user.isEmpty()){
+            throw new UserNotFoundException("id "+id);
+        }
+
+        return user.get().getPosts();
+    }
+
+    @PostMapping("/jpa/users/{id}/posts")
+    public ResponseEntity<Post> creatingPostNewUsers(@PathVariable int id,@Valid @RequestBody Post post)
+    {
+        Optional<User>  user=userJpaRepository.findById(id);
+        if(user.isEmpty())
+            throw new UserNotFoundException("id "+id);
+
+        post.setUser(user.get());
+
+        Post savedPost = postJpaRepository.save(post);
+
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(savedPost.getId())
+                .toUri();
+        return ResponseEntity.created(location).build();
+
+    }
 
 }
